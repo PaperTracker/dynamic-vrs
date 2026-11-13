@@ -1,0 +1,16 @@
+out/
+build/
+__pycache__/
+*.pyc
+*.user
+
+# Local staging directories produced by scripts/openvr/stage.ps1 and install scripts.
+dynamic-vrs_payload/
+logs/
+
+# IDE and OS files.
+.vs/
+.vscode/
+.idea/
+*.swp
+Thumbs.db

@@ -1,0 +1,75 @@
+name: Package
+
+# Builds the shipped binaries with the SDKs and assembles the zip, to prove the packaging
+# pipeline still works. Nothing is published: the project is distributed as source only, so
+# this workflow never uploads a release and never creates a tag. Called by CI on every
+# change, and by hand through Package check when a packaging change needs verifying.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version stamped into the package, for example 0.2.0-ci.1
+        required: true
+        type: string
+
+# Packaging itself needs no permissions: no tag, no release, no artifact upload.
+
+env:
+  # Public SDK inputs are pinned so every rebuild uses the same headers and libraries.
+  OPENVR_REF: v2.5.1
+  NVAPI_COMMIT: 70d337db9186e968eab622f7e786de7e437faf3d
+  OPENXR_COMMIT: 24a1f2b92d212501a2b1b8d30ffd53abf55fcfa8
+
+jobs:
+  package:
+    name: Package (Windows x64)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch OpenVR SDK
+        run: git clone --depth 1 --branch $env:OPENVR_REF https://github.com/ValveSoftware/openvr "$env:RUNNER_TEMP\openvr"
+
+      - name: Fetch NVAPI SDK
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          git init --quiet "$env:RUNNER_TEMP\nvapi"
+          git -C "$env:RUNNER_TEMP\nvapi" fetch --quiet --depth 1 https://github.com/NVIDIA/nvapi $env:NVAPI_COMMIT
+          git -C "$env:RUNNER_TEMP\nvapi" checkout --quiet FETCH_HEAD
+
+      - name: Fetch OpenXR SDK
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          git init --quiet "$env:RUNNER_TEMP\openxr"
+          git -C "$env:RUNNER_TEMP\openxr" fetch --quiet --depth 1 https://github.com/KhronosGroup/OpenXR-SDK $env:OPENXR_COMMIT
+          git -C "$env:RUNNER_TEMP\openxr" checkout --quiet FETCH_HEAD
+
+      - name: Configure
+        run: >
+          cmake -S . -B out/package -G "Visual Studio 17 2022" -A x64
+          -DOPENVR_SDK_ROOT="$env:RUNNER_TEMP\openvr" -DNVAPI_ROOT="$env:RUNNER_TEMP\nvapi"
+          -DOPENXR_SDK_ROOT="$env:RUNNER_TEMP\openxr"
+
+      - name: Build
+        run: cmake --build out/package --config Release --parallel
+
+      - name: Package
+        env:
+          VERSION: ${{ inputs.version }}
+        run: ./tools/release/package.ps1 -Version $env:VERSION -BuildDirectory out/package/Release -OutputDirectory out/release
+
+      # Printing the hash proves the packaging step produced a complete zip without handing
+      # the binaries to anyone. CI keeps no artifact, which is the point.
+      - name: Report package hash
+        shell: pwsh
+        run: |
+          $summary = @()
+          Get-ChildItem out/release -Filter *.zip | ForEach-Object {
+            $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            $line = "Built $($_.Name) - not published, SHA-256 $hash"
+            Write-Output $line
+            $summary += $line
+          }
+          if ($summary.Count -eq 0) { throw "package.ps1 produced no zip" }
+          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8

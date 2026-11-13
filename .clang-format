@@ -1,0 +1,51 @@
+# C++ style: LLVM plus the overrides below, which keep the repository's established conventions.
+# The clang-format version is pinned in tools/format/requirements.txt; check or fix with tools/format/format_cpp.py.
+# Excluded paths (third-party, generated): .clang-format-ignore.
+Language: Cpp
+BasedOnStyle: LLVM
+Standard: Latest
+
+# Layout: 4-space indent, 120 columns, access specifiers and case labels at the enclosing indent.
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 120
+ContinuationIndentWidth: 4
+AccessModifierOffset: -4
+IndentCaseLabels: false
+IndentCaseBlocks: false
+NamespaceIndentation: None
+MaxEmptyLinesToKeep: 2
+
+# Declarations: T* p and T& r.
+PointerAlignment: Left
+ReferenceAlignment: Pointer
+DerivePointerAlignment: false
+
+# Short bodies may stay on one line; an if with an else is always split.
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortLambdasOnASingleLine: All
+
+# Comments are often hand-aligned tables; clang-format does not rewrap them.
+ReflowComments: false
+
+# Includes: the file's own header first, then each blank-line-separated block sorted; blocks are not regrouped.
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+IncludeIsMainRegex: '(_test|_tests|_linux|_windows|_win|_impl)?$'
+# Windows headers that must precede others keep that order wherever they share a block; everything else sorts by name.
+IncludeCategories:
+  - Regex: '^<winsock2\.h>$'
+    Priority: 1
+  - Regex: '^<(ws2tcpip|ws2ipdef|mswsock)\.h>$'
+    Priority: 2
+  - Regex: '^<windows\.h>$'
+    Priority: 3
+  - Regex: '.*'
+    Priority: 4
+SortUsingDeclarations: LexicographicNumeric
+...

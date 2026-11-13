@@ -1,0 +1,45 @@
+name: Package check
+
+# Run by hand from the Actions tab to prove the packaging pipeline still builds the shipped
+# configuration on main. It publishes nothing: no tag, no release, no uploaded artifact.
+# The project is distributed as source only; this workflow is a build check.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version stamped into the package, for example 0.2.0-check.1
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: package-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check version and branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check version and branch
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Version '$VERSION' is not of the form 1.2.3 or 1.2.3-beta.1"
+            exit 1
+          fi
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Packaging is checked from main; this run is on $GITHUB_REF"
+            exit 1
+          fi
+
+  package:
+    name: Build package
+    needs: check
+    uses: ./.github/workflows/package.yml
+    with:
+      version: ${{ inputs.version }}

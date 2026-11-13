@@ -1,0 +1,37 @@
+name: Bug report
+description: Something does not work as documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Source revision
+      description: Output of `git rev-parse --short HEAD` from the checkout used to build the layer.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Windows, GPU/driver, VR API (OpenVR/OpenXR), graphics API, runtime/version, headset, application and eye tracker.
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: dynamic-vrs.ini
+      description: The relevant keys, or the whole file.
+      render: ini
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant lines from `%LOCALAPPDATA%\OpenVRDynamicVRS\logs\`. Logs can contain gaze coordinates. Review them before sharing.
+      render: text

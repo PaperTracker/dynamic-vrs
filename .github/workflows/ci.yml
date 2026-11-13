@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (Windows x64)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      # Builds without NVAPI, the configuration a contributor without the SDK gets; the
+      # package job below builds the shipped configuration with all three SDKs.
+      - name: Fetch OpenVR SDK
+        run: git clone --depth 1 --branch v2.5.1 https://github.com/ValveSoftware/openvr "$env:RUNNER_TEMP\openvr"
+
+      - name: Configure
+        run: cmake -S . -B out/ci -G "Visual Studio 17 2022" -A x64 -DOPENVR_SDK_ROOT="$env:RUNNER_TEMP\openvr"
+
+      - name: Build
+        run: cmake --build out/ci --config Release --parallel
+
+  package:
+    name: Package
+    uses: ./.github/workflows/package.yml
+    with:
+      version: 0.0.0-ci.${{ github.run_number }}
+
+  lint:
+    name: Format and Python checks
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: clang-format
+        run: python tools/format/format_cpp.py
+
+      - name: Python syntax
+        run: python -m compileall -q tools

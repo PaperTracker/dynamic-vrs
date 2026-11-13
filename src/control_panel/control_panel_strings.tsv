@@ -1,0 +1,96 @@
+SourceKey	en_US
+DynamicVRS/Control/Title	Dynamic VRS
+DynamicVRS/Control/Subtitle	Eye-tracked foveated rendering
+DynamicVRS/Control/Process	Application
+DynamicVRS/Control/ProcessNone	No application found
+DynamicVRS/Control/Enable	Foveated rendering
+DynamicVRS/Control/Mode	Sharp zone follows
+DynamicVRS/Control/Gaze	Eye gaze
+DynamicVRS/Control/Fixed	Head direction
+DynamicVRS/Control/Preset	Preset
+DynamicVRS/Control/Quality	Quality
+DynamicVRS/Control/Balanced	Balanced
+DynamicVRS/Control/Performance	Performance
+DynamicVRS/Control/Custom	Custom
+DynamicVRS/Control/SectionRegions	Regions and quality
+DynamicVRS/Control/Ring1x1	Sharp zone · 1×1
+DynamicVRS/Control/Ring2x1	Ring · 2×1
+DynamicVRS/Control/Ring2x2	Ring · 2×2
+DynamicVRS/Control/Ring4x2	Ring · 4×2
+DynamicVRS/Control/RingOff	Off
+DynamicVRS/Control/RingEdge	To edge
+DynamicVRS/Control/Dither	Ring edges
+DynamicVRS/Control/DitherDetail	Mixes tiles across each ring
+DynamicVRS/Control/DitherOff	Hard
+DynamicVRS/Control/Effective	Applied (left eye): {rings}.
+DynamicVRS/Control/EffectiveRing	{tier} to {deg:.1f}°
+DynamicVRS/Control/EffectiveEdge	{tier} to the edge
+DynamicVRS/Control/EffectiveRest	{tier} beyond
+DynamicVRS/Control/Widened	Widened by {deg:.1f}° ({reason}).
+DynamicVRS/Control/WidenSaccade	fast eye movement
+DynamicVRS/Control/WidenGaze	gaze missing
+DynamicVRS/Control/DiagnosticsShow	Show diagnostics
+DynamicVRS/Control/DiagnosticsHide	Hide diagnostics
+DynamicVRS/Control/Display	Visual aid
+DynamicVRS/Control/DisplayNone	None
+DynamicVRS/Control/DisplayRings	Radius rings
+DynamicVRS/Control/DisplayBlur	Exterior blur
+DynamicVRS/Control/Uniform	Full-screen rate
+DynamicVRS/Control/Normal	Off
+DynamicVRS/Control/SectionView	Left eye
+DynamicVRS/Control/ViewLive	Following gaze
+DynamicVRS/Control/ViewSaccade	Following gaze · widened
+DynamicVRS/Control/ViewGazeStale	Gaze stale · widened
+DynamicVRS/Control/ViewGazeLost	Gaze lost
+DynamicVRS/Control/ViewFixed	Head direction
+DynamicVRS/Control/ViewOff	Off · full rate everywhere
+DynamicVRS/Control/ViewUniform	Uniform rate
+DynamicVRS/Control/ViewNone	Not connected
+DynamicVRS/Control/ViewWaiting	Start a VR application with the layer loaded to see its shading regions here.
+DynamicVRS/Control/LegendFull	Full rate
+DynamicVRS/Control/LegendHalf	Half rate
+DynamicVRS/Control/LegendQuarter	Quarter rate
+DynamicVRS/Control/LegendEighth	Eighth rate
+DynamicVRS/Control/LegendSixteenth	Sixteenth rate
+DynamicVRS/Control/SectionMetrics	Performance
+DynamicVRS/Control/MetricWork	Shading work
+DynamicVRS/Control/WorkDetail	of native pixel shading, {saved:.0f}% less (estimated from screen area)
+DynamicVRS/Control/MetricGpu	Scene GPU time
+DynamicVRS/Control/GpuDetail	p95 {p95:.2f} ms · {fps:.0f} fps
+DynamicVRS/Control/GpuNone	No timing samples · OpenVR only
+DynamicVRS/Control/MetricGaze	Eye tracking
+DynamicVRS/Control/GazeDetail	{state} · last packet {age} ago
+DynamicVRS/Control/GazeStale	no packet for {age}; is PaperTracker running?
+DynamicVRS/Control/GazeLost	Signal lost
+DynamicVRS/Control/GazeNoSignal	No signal
+DynamicVRS/Control/GazeValid	tracking
+DynamicVRS/Control/GazeInvalid	eyes not tracked
+DynamicVRS/Control/GazeNone	no PaperTracker gaze export received
+DynamicVRS/Control/GazeNotUsed	not used in this mode
+DynamicVRS/Control/MetricAb	GPU time change
+DynamicVRS/Control/Measure	Measure (A/B)
+DynamicVRS/Control/MeasureCancel	Cancel
+DynamicVRS/Control/AbIdle	Switches foveation off and on for about 40 s; hold your head still.
+DynamicVRS/Control/AbUnavailable	A/B requires OpenVR GPU timing.
+DynamicVRS/Control/AbRunning	foveation {state} · keep still
+DynamicVRS/Control/AbOn	on
+DynamicVRS/Control/AbOff	off
+DynamicVRS/Control/AbResult	{off:.2f} ms off · {on:.2f} ms on
+DynamicVRS/Control/AbCancelled	cancelled or no frame timing
+DynamicVRS/Control/AbNeedsOn	turn foveated rendering on first
+DynamicVRS/Control/Save	Save as defaults
+DynamicVRS/Control/Saved	Saved to {path}. Applies from the next game start.
+DynamicVRS/Control/NoConfig	dynamic-vrs.ini not found; start the panel with --config.
+DynamicVRS/Control/Restore	Restore startup settings
+DynamicVRS/Control/Note	Changes last until the game exits unless you save them. Shading work estimates pixel shading from screen area. A/B compares scene GPU time.
+DynamicVRS/Control/Waiting	No application with live control found. Restart the game once after enabling the layer.
+DynamicVRS/Control/Pending	Sent; waiting for a frame to apply it.
+DynamicVRS/Control/Busy	Another controller is updating; waiting.
+DynamicVRS/Control/Error	Unable to update: {detail}
+DynamicVRS/Control/ErrorConnect	no live control endpoint for process {pid}
+DynamicVRS/Control/ErrorInvalid	the layer would reject these settings
+DynamicVRS/Control/ErrorSession	the game session changed
+DynamicVRS/Control/Rejected	The layer rejected the request; the last valid settings remain in use.
+DynamicVRS/Control/Paused	The game is not submitting frames; new settings apply when rendering resumes.
+DynamicVRS/Control/Applied	Applied · render target {width}×{height}
+DynamicVRS/Control/OffApplied	Foveated rendering is off

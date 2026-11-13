@@ -1,0 +1,5 @@
+LIBRARY vrclient_x64
+EXPORTS
+    HmdSystemFactory                    @1
+    VRClientCoreFactory                 @2
+    xrNegotiateLoaderRuntimeInterface   @3

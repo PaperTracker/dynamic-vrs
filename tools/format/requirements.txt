@@ -1,0 +1,3 @@
+# clang-format is pinned to one exact release so that every machine and CI runner formats identically.
+# Bump it only in a dedicated PR that also reformats the tree (see README.md#development).
+clang-format==22.1.8

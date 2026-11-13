@@ -1,0 +1,4 @@
+# Paths clang-format leaves alone (clang-format 18+ reads this file; tools/format/format_cpp.py relies on it).
+# Third-party code keeps its upstream format; generated files are rewritten by their generators.
+# The repository currently contains neither; add patterns here if that changes, for example:
+#   third_party/**

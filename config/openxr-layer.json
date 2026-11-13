@@ -1,0 +1,11 @@
+{
+  "file_format_version": "1.0.0",
+  "api_layer": {
+    "name": "XR_APILAYER_DYNAMIC_VRS_d3d11",
+    "library_path": ".\\DynamicVRSLayer64.dll",
+    "api_version": "1.0",
+    "implementation_version": "1",
+    "description": "Eye-tracked D3D11 variable rate shading",
+    "disable_environment": "DYNAMIC_VRS_DISABLE_OPENXR"
+  }
+}

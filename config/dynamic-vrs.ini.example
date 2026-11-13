@@ -1,0 +1,156 @@
+[loader]
+; The template is disabled by default. Both installers set this to 1.
+enabled=0
+
+; OpenVR proxy options only. Relative paths use the proxy DLL directory.
+realVrClientPath=real_vrclient_x64.dll
+; Unsupported, and it contradicts NOTICE-ACCEPTABLE-USE.md: non-zero makes Valve's client
+; report the proxy's path as its own, which disguises the replacement. Leave at 0. The
+; staging script sets it only to diagnose path resolution.
+spoofRealVrClientPath=0
+payloadDirectory=dynamic-vrs_payload
+nativeLayerLibrary=DynamicVRSLayer64.dll
+
+; OpenVR diagnostic only: wraps IVRCompositor Submit and records texture metadata. It
+; changes the call chain and can stall rendering, so keep it off normally.
+enableSubmitProbe=0
+
+; ---------------------------------------------------------------- gaze source
+
+; Rendering mode:
+;   "off"   no rate image at all: measurement and logging only.
+;   "fixed" head-forward centers, projected separately for each eye.
+;   "gaze"  the same rings, centered on the per-eye gaze point from the
+;           PaperTracker gaze export below.
+nativeVrsMode=off
+
+; PaperTracker's gaze export port (V2 page, "Gaze data export"; default 9945).
+; The layer subscribes from its own loopback port, so several programs can use
+; the export at once. 0 disables gaze input. Protocol: docs/provider-layout.md.
+gazeExportPort=9945
+
+; Diagnostic axis flips. The export convention is yaw right and pitch up.
+gazeFlipX=0
+gazeFlipY=0
+
+; Shifts the received points, in degrees as seen from the head origin.
+gazeForwardYawDegrees=0
+gazeForwardPitchDegrees=0
+
+; 0: each eye's sharp region follows that eye's own gaze point. 1: both eyes use
+; the export's fused point, each projected from its own position.
+vrsGazeCombine=0
+
+; ------------------------------------------------------- gaze stabilization
+
+; While the eye fixates, tracker noise does not move the rings: the center is
+; low-passed (gazeSmoothingHz, faster while the eye moves; 0 disables) and only
+; follows once it has moved more than gazeDeadbandDegrees.
+gazeDeadbandDegrees=0.5
+gazeSmoothingHz=4
+; Gaze faster than this (degrees per second) is a saccade: the center jumps to
+; the new point and every ring is pushed out by gazeSaccadeWidenDegrees for
+; gazeSaccadeHoldMs, covering where the eye lands before the next frame shows it.
+gazeSaccadeDegreesPerSecond=180
+gazeSaccadeWidenDegrees=4
+gazeSaccadeHoldMs=150
+; When gaze is invalid (a blink, an eye not tracked), silent for gazeStaleMs
+; (0 = never) or disconnected, the rings stay where they were and are pushed
+; out by gazeLostWidenDegrees. After gazeLostMs without gaze the center drifts
+; to head-forward. Widening eases back with gazeWidenReleaseMs once gaze is good.
+gazeLostWidenDegrees=8
+gazeStaleMs=300
+gazeLostMs=1000
+gazeWidenReleaseMs=250
+
+; ------------------------------------------------------------ rate image shape
+
+; The shading rate steps down from the gaze point outward through up to five
+; tiers: 1x1 (full rate), 2x1, 2x2, 4x2 and 4x4. Each key is the outer radius of
+; one tier in degrees from the eye axis, projected per eye, so it stays stable
+; when render resolution changes. Everything beyond the last ring is 4x4.
+;   0  skips that tier (the next ring takes over from the previous one)
+;   90 extends that tier to the edge of the view; later rings are unused
+; Rings in use must not shrink outward. Smaller radii save more GPU and are more
+; visible; a gradual ladder hides the steps better than one big jump.
+vrsRing1x1Degrees=15
+vrsRing2x1Degrees=25
+vrsRing2x2Degrees=90
+vrsRing4x2Degrees=0
+
+; Width in degrees of the band around each ring where tiles of both tiers are
+; mixed in an ordered dither, so the boundary is not a hard line. 0 = hard edges.
+vrsRingDitherDegrees=0
+
+; Older files describe three regions instead: vrsInnerRadiusDegrees (or
+; vrsInnerRadiusX/Y as a fraction of the viewport) at 1x1, vrsMiddleRadiusDegrees
+; (or vrsMiddleRadiusX/Y) at vrsMiddleRate, then vrsOuterRate to the edge, with
+; rates 1 = 2x1, 2 = 2x2, 42 = 4x2, 4 = 4x4. They are still read when none of the
+; vrsRing* keys is present, and become the equivalent rings.
+
+; 0/0 follows the submitted eye texture size. OpenXR also accepts scaled scene
+; targets with the same aspect ratio (allowing two pixels of rounding), at least
+; 256x128. Set both dimensions to select an exact diagnostic size in either API.
+; Single-sample mip 0 and 2x/4x/8x MSAA render targets are supported, as one
+; double-wide texture, a two-slice texture array (single-pass instanced) or a
+; texture per eye, whichever the game submits; unrelated targets and nonzero mips
+; are skipped. MSAA limits how coarse the driver shades: 4x4 acts as 2x2 with 4x
+; MSAA, and with 8x MSAA every rate from 2x2 up halves the shading while 2x1
+; saves nothing.
+vrsTargetWidth=0
+vrsTargetHeight=0
+
+; Decisive test: 0 draws the normal foveated pattern. 2/42/4 applies that rate to
+; the entire target with no sharp region, which makes it obvious whether the rate
+; image reaches the frame the compositor shows.
+vrsUniformRate=0
+
+; ------------------------------------------------------------ tile orientation
+
+; Startup-only diagnostic: flips only the rows of the rate image, never the gaze
+; coordinates or the debug rings.
+vrsRasterFlipY=0
+; Per-format orientation rule. 0 disables it. A rule matching the submitted format
+; family is ignored, and an application-specific rule is exactly that: it is not a
+; universal HDR rule.
+; VRChat (Unity, D3D11) renders its scene and post-processing targets upside down
+; in R16G16B16A16_FLOAT (10) and submits R8G8B8A8_UNORM_SRGB, so it needs
+; vrsRasterFlipYFormat=10 with vrsRasterFlipYSamples=0. Without that rule the sharp
+; region is mirrored vertically away from the gaze point. Measure other
+; applications with debugTargetAlignment=1 before setting a rule.
+vrsRasterFlipYFormat=0
+; 1/2/4/8 selects a sample count; 0 applies the rule to every supported count.
+vrsRasterFlipYSamples=1
+
+; -------------------------------------------------------------- control panel
+
+; 1 starts DynamicVRSPanel64.exe from the layer directory when the game completes
+; its first D3D11 frame, unless one is already open. The panel closes when the
+; game exits. OpenVR uses dynamic-vrs_payload; OpenXR uses its install directory.
+; 0 disables it.
+controlPanelAutoLaunch=1
+
+; ------------------------------------------------------------- visual helpers
+
+; Strongly blurs the presented image outside the inner ellipse. 0 disables it; 7
+; uses a 1/128-resolution mip for the exterior. This is a visualization effect, not
+; a quality or performance measurement. Supports single-sample D3D11 RGBA8/BGRA8
+; double-wide, per-eye and eye-array images. OpenVR uses the submitted eye bounds,
+; including dynamic-resolution rectangles, for drawing and copyback.
+; OpenXR requires supported full-eye projection subimages. The effect is written
+; into the submitted color image; submission flags and auxiliary data pass through.
+debugBlurOutsideMip=0
+
+; Thin green ring around the sharp zone plus a yellow one at the next ring that
+; does not reach the edge; all other pixels are untouched.
+; Takes precedence over debugBlurOutsideMip. Turn both off before measuring.
+debugRadiusRings=0
+
+; One-shot alignment diagnostic: toggling the radius rings off and on records
+; correlation and viewport metadata. No images are written. GPU readback can cause
+; a short pause, so keep it off unless diagnosing.
+debugTargetAlignment=0
+
+; Startup-only bounded pipeline statistics. Each runtime settings change captures
+; 24 frames asynchronously. Disable this before measuring normal frame times.
+debugGpuFrameStats=0

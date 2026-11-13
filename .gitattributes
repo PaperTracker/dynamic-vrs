@@ -1,0 +1,15 @@
+# Normalize line endings in the repository; checkouts use the platform default.
+* text=auto
+
+# cmd.exe needs CRLF to parse batch files reliably.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Tab-separated string table: keep tabs and bytes as they are.
+*.tsv text -whitespace
+
+*.png binary
+*.jpg binary
+*.dll binary
+*.exe binary
+*.lib binary
