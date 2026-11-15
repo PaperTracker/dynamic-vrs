@@ -65,6 +65,8 @@ Testing covered a small number of locally installed applications on one machine.
 - Only Direct3D 11 is supported. Side-by-side, two-slice array and separate-eye textures work. OpenXR needs projection subimages that fill their eye image or half of a side-by-side image; quad views and other graphics bindings are forwarded without VRS.
 - Radius rings and exterior blur need single-sample RGBA8 or BGRA8 eye textures. VRS also works on eligible MSAA targets, which limits the available coarse rates.
 - Scene GPU timing and A/B measurements are available in OpenVR when SteamVR provides timing samples. The shading work estimate is based on screen area and shading rates.
+- VDXR is not supported. PaperTracker exports calibrated gaze by SteamVR. With VDXR selected and SteamVR closed, Dynamic VRS can load but receives no valid gaze data.
+- In Beat Saber, the area you look at can still appear blurry. When foveated rendering is enabled in Beat Saber, fixed and dynamic foveated rendering appear to be active at the same time. As a result, areas near the edges of the view remain blurry even when you look directly at them. Further testing is needed to clarify the details.
 
 ## Building
 
