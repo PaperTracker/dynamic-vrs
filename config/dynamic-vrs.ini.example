@@ -146,9 +146,10 @@ debugBlurOutsideMip=0
 ; Takes precedence over debugBlurOutsideMip. Turn both off before measuring.
 debugRadiusRings=0
 
-; One-shot alignment diagnostic: toggling the radius rings off and on records
-; correlation and viewport metadata. No images are written. GPU readback can cause
-; a short pause, so keep it off unless diagnosing.
+; One-shot alignment diagnostic for side-by-side and two-slice stereo textures.
+; Toggle Radius Rings off and on to record per-eye correlation and viewport
+; metadata. No images are written by this diagnostic. GPU readback can cause a
+; short pause, so keep it off unless diagnosing.
 debugTargetAlignment=0
 
 ; Startup-only bounded pipeline statistics. Each runtime settings change captures

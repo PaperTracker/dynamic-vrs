@@ -69,7 +69,8 @@ struct RtVrsEntry {
     UINT tileHeight = 0;
     ID3D11Texture2D* rateTexture = nullptr;
     ID3D11NvShadingRateResourceView* rateView = nullptr;
-    // Array layout only: each eye's slice alone, for a target view that renders one slice.
+    // A single-slice RTV addresses layer zero of the bound rate view. Give it a 2D image for its eye.
+    ID3D11Texture2D* sliceTextures[2] = {};
     ID3D11NvShadingRateResourceView* sliceViews[2] = {};
     std::vector<NvU8> pattern;
     uint64_t lastGazeSequence = 0;
