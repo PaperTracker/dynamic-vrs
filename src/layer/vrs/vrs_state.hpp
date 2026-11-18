@@ -47,6 +47,7 @@ struct FixedVrsState {
     UINT renderWidth = 0;
     UINT renderHeight = 0;
     DXGI_FORMAT submittedFormat = DXGI_FORMAT_UNKNOWN;
+    UINT submittedSamples = 0;
     EyeLayout layout = EyeLayout::Unknown;
     void* leftEyeHandle = nullptr; // the texture last submitted for the left eye
     // The game submits its eye image upside down (vMin > vMax), as Unity does for render textures; its
