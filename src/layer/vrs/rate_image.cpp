@@ -16,6 +16,7 @@ namespace {
 
 void releaseRtVrsEntry(RtVrsEntry& entry) {
     for (auto& view : entry.sliceViews) releaseCom(view);
+    for (auto& texture : entry.sliceTextures) releaseCom(texture);
     releaseCom(entry.rateView);
     releaseCom(entry.rateTexture);
     releaseCom(entry.device);
@@ -114,7 +115,6 @@ RtVrsEntry* ensureRtVrsEntryLocked(ID3D11Device* device, UINT width, UINT height
     }
 
     RtVrsEntry entry;
-    entry.device = device;
     entry.width = width;
     entry.height = height;
     entry.rasterFlipY = rasterFlipY;
@@ -154,21 +154,24 @@ RtVrsEntry* ensureRtVrsEntryLocked(ID3D11Device* device, UINT width, UINT height
         viewDesc.Texture2DArray.ArraySize = layers;
         created = NvAPI_D3D11_CreateShadingRateResourceView(device, entry.rateTexture, &viewDesc, &entry.rateView) ==
                   NVAPI_OK;
-        viewDesc.Texture2DArray.ArraySize = 1;
+        // A draw restricted to one RTV slice uses render-target array index zero. A rate view with
+        // FirstArraySlice=1 does not reliably select that eye's pattern, so bind a standalone 2D image.
+        textureDesc.ArraySize = 1;
+        viewDesc.ViewDimension = NV_SRRV_DIMENSION_TEXTURE2D;
+        viewDesc.Texture2D.MipSlice = 0;
         for (UINT slice = 0; created && slice < layers; ++slice) {
-            viewDesc.Texture2DArray.FirstArraySlice = slice;
-            created = NvAPI_D3D11_CreateShadingRateResourceView(device, entry.rateTexture, &viewDesc,
+            created = SUCCEEDED(device->CreateTexture2D(&textureDesc, nullptr, &entry.sliceTextures[slice])) &&
+                      NvAPI_D3D11_CreateShadingRateResourceView(device, entry.sliceTextures[slice], &viewDesc,
                                                                 &entry.sliceViews[slice]) == NVAPI_OK;
         }
     }
     if (!created) {
         logMessage("stage=vrs-rt result=view-create-failed render=%ux%u layers=%u", width, height, layers);
-        for (auto& view : entry.sliceViews) releaseCom(view);
-        releaseCom(entry.rateView);
-        releaseCom(entry.rateTexture);
+        releaseRtVrsEntry(entry);
         return nullptr;
     }
     device->AddRef();
+    entry.device = device;
     g_rtVrsEntries.push_back(std::move(entry));
     logMessage("stage=vrs-rt result=created render=%ux%u tiles=%ux%u layers=%u rasterFlipY=%d entries=%zu", width,
                height, tileWidth, tileHeight, layers, rasterFlipY ? 1 : 0, g_rtVrsEntries.size());
@@ -215,9 +218,12 @@ void refreshRtVrsPatternLocked(RtVrsEntry& entry, ID3D11DeviceContext* context) 
     }
     if (context != nullptr && entry.rateTexture != nullptr) {
         const std::size_t layerTiles = static_cast<std::size_t>(entry.tileWidth) * entry.tileHeight;
-        for (UINT layer = 0; layer < eyeLayoutLayers(entry.layout); ++layer)
-            context->UpdateSubresource(entry.rateTexture, layer, nullptr, entry.pattern.data() + layerTiles * layer,
-                                       entry.tileWidth, 0);
+        for (UINT layer = 0; layer < eyeLayoutLayers(entry.layout); ++layer) {
+            const auto* tiles = entry.pattern.data() + layerTiles * layer;
+            context->UpdateSubresource(entry.rateTexture, layer, nullptr, tiles, entry.tileWidth, 0);
+            if (entry.sliceTextures[layer])
+                context->UpdateSubresource(entry.sliceTextures[layer], 0, nullptr, tiles, entry.tileWidth, 0);
+        }
         if (entry.verifications < 2U) {
             ++entry.verifications;
             verifyRtVrsTextureLocked(entry, context);

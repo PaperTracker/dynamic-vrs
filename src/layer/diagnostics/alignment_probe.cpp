@@ -17,10 +17,13 @@ float halfFloat(uint16_t h) {
                               : std::ldexp(1.0F + float(m) / 1024.0F, e - 15);
     return h & 0x8000 ? -v : v;
 }
-Luminance sample(ID3D11Texture2D* source, DXGI_FORMAT viewFormat) {
+Luminance sample(ID3D11Texture2D* source, DXGI_FORMAT viewFormat, EyeLayout layout) {
     D3D11_TEXTURE2D_DESC d{};
     source->GetDesc(&d);
-    if (d.Width < 128 || d.Height < Grid || d.Width % 2 || d.ArraySize != 1) return {};
+    const bool array = layout == EyeLayout::Array;
+    const unsigned eyeWidth = array ? d.Width : d.Width / 2;
+    if (eyeWidth < Grid || d.Height < Grid || d.ArraySize != eyeLayoutLayers(layout) || (!array && d.Width % 2))
+        return {};
     auto format = d.Format;
     if (format == DXGI_FORMAT_R8G8B8A8_TYPELESS)
         format = viewFormat == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB ? viewFormat : DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -35,7 +38,7 @@ Luminance sample(ID3D11Texture2D* source, DXGI_FORMAT viewFormat) {
     ComPtr<ID3D11DeviceContext> context;
     source->GetDevice(&device);
     device->GetImmediateContext(&context);
-    const unsigned width = d.Width, height = d.Height;
+    const unsigned height = d.Height;
     d.Format = format;
     d.MipLevels = 1;
     d.SampleDesc = {1, 0};
@@ -47,45 +50,50 @@ Luminance sample(ID3D11Texture2D* source, DXGI_FORMAT viewFormat) {
     ID3D11Texture2D* input = source;
     if (original.SampleDesc.Count > 1) {
         if (FAILED(device->CreateTexture2D(&d, nullptr, &resolved))) return {};
-        context->ResolveSubresource(resolved.Get(), 0, source, 0, format);
+        for (unsigned slice = 0; slice < d.ArraySize; ++slice)
+            context->ResolveSubresource(resolved.Get(), slice, source, slice * original.MipLevels, format);
         input = resolved.Get();
     }
     d.Height = Grid;
     d.Usage = D3D11_USAGE_STAGING;
     d.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-    std::vector<uint8_t> zero(static_cast<size_t>(width) * Grid * bytes, 0);
-    D3D11_SUBRESOURCE_DATA initial{zero.data(), width * bytes, 0};
     ComPtr<ID3D11Texture2D> staging;
-    if (FAILED(device->CreateTexture2D(&d, &initial, &staging))) return {};
-    for (unsigned row = 0; row < Grid; ++row) {
-        const unsigned y = (row * (height - 1) + (Grid - 1) / 2) / (Grid - 1);
-        D3D11_BOX box{0, y, 0, width, y + 1, 1};
-        context->CopySubresourceRegion(staging.Get(), 0, 0, row, 0, input, 0, &box);
-    }
-    D3D11_MAPPED_SUBRESOURCE mapped{};
-    if (FAILED(context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped))) return {};
+    if (FAILED(device->CreateTexture2D(&d, nullptr, &staging))) return {};
     Luminance out(2 * Grid * Grid);
     bool finite = true;
-    for (unsigned eye = 0; eye < 2; ++eye)
-        for (unsigned y = 0; y < Grid; ++y)
-            for (unsigned x = 0; x < Grid; ++x) {
-                const unsigned px = eye * (width / 2) + (x * (width / 2 - 1) + (Grid - 1) / 2) / (Grid - 1);
-                const auto* pixel = static_cast<const uint8_t*>(mapped.pData) + y * mapped.RowPitch + px * bytes;
-                float rgb[4]{};
-                if (bytes == 16)
-                    std::memcpy(rgb, pixel, 16);
-                else if (bytes == 8) {
-                    uint16_t h[4];
-                    std::memcpy(h, pixel, 8);
-                    for (int c = 0; c < 3; ++c) rgb[c] = halfFloat(h[c]);
-                } else {
-                    for (int c = 0; c < 3; ++c) rgb[c] = float(pixel[bgra ? 2 - c : c]) / 255.0F;
+    const unsigned inputMipLevels = input == source ? original.MipLevels : 1;
+    for (unsigned slice = 0; slice < d.ArraySize; ++slice) {
+        // A packed texture shares one subresource. An array stores each whole eye in its own slice.
+        for (unsigned row = 0; row < Grid; ++row) {
+            const unsigned y = (row * (height - 1) + (Grid - 1) / 2) / (Grid - 1);
+            const D3D11_BOX box{0, y, 0, d.Width, y + 1, 1};
+            context->CopySubresourceRegion(staging.Get(), slice, 0, row, 0, input, slice * inputMipLevels, &box);
+        }
+        D3D11_MAPPED_SUBRESOURCE mapped{};
+        if (FAILED(context->Map(staging.Get(), slice, D3D11_MAP_READ, 0, &mapped))) return {};
+        const unsigned eyesPerSlice = 2 / d.ArraySize;
+        for (unsigned column = 0; column < eyesPerSlice; ++column)
+            for (unsigned y = 0; y < Grid; ++y)
+                for (unsigned x = 0; x < Grid; ++x) {
+                    const unsigned px = column * eyeWidth + (x * (eyeWidth - 1) + (Grid - 1) / 2) / (Grid - 1);
+                    const auto* pixel = static_cast<const uint8_t*>(mapped.pData) + y * mapped.RowPitch + px * bytes;
+                    float rgb[4]{};
+                    if (bytes == 16)
+                        std::memcpy(rgb, pixel, 16);
+                    else if (bytes == 8) {
+                        uint16_t h[4];
+                        std::memcpy(h, pixel, 8);
+                        for (int c = 0; c < 3; ++c) rgb[c] = halfFloat(h[c]);
+                    } else {
+                        for (int c = 0; c < 3; ++c) rgb[c] = float(pixel[bgra ? 2 - c : c]) / 255.0F;
+                    }
+                    const float value = .2126F * rgb[0] + .7152F * rgb[1] + .0722F * rgb[2];
+                    finite = finite && std::isfinite(value);
+                    const unsigned eye = slice * eyesPerSlice + column;
+                    out[(eye * Grid + y) * Grid + x] = value;
                 }
-                const float value = .2126F * rgb[0] + .7152F * rgb[1] + .0722F * rgb[2];
-                finite = finite && std::isfinite(value);
-                out[(eye * Grid + y) * Grid + x] = value;
-            }
-    context->Unmap(staging.Get(), 0);
+        context->Unmap(staging.Get(), slice);
+    }
     return finite ? out : Luminance{};
 }
 float correlation(const Luminance& source, const Luminance& final, unsigned eye, bool flip, int shift, float scale) {
@@ -152,11 +160,15 @@ void TargetAlignmentProbe::observe(ID3D11Texture2D* texture, uint32_t format, ui
     c.result.viewports = viewports;
     impl_->candidates.push_back(std::move(c));
 }
-std::vector<TargetAlignmentResult> TargetAlignmentProbe::capture(ID3D11Texture2D* submitted) {
+std::vector<TargetAlignmentResult> TargetAlignmentProbe::capture(ID3D11Texture2D* submitted, EyeLayout layout) {
     std::vector<TargetAlignmentResult> results;
+    if (layout != EyeLayout::SideBySide && layout != EyeLayout::Array) {
+        reset();
+        return results;
+    }
     ComPtr<ID3D11Device> finalDevice;
     submitted->GetDevice(&finalDevice);
-    const auto final = sample(submitted, DXGI_FORMAT_UNKNOWN);
+    const auto final = sample(submitted, DXGI_FORMAT_UNKNOWN, layout);
     for (auto& candidate : impl_->candidates) {
         auto result = candidate.result;
         ComPtr<ID3D11Device> candidateDevice;
@@ -166,8 +178,9 @@ std::vector<TargetAlignmentResult> TargetAlignmentProbe::capture(ID3D11Texture2D
             continue;
         }
         result.sameAsSubmit = candidate.texture.Get() == submitted;
-        const auto input =
-            result.sameAsSubmit ? final : sample(candidate.texture.Get(), static_cast<DXGI_FORMAT>(result.format));
+        const auto input = result.sameAsSubmit
+                               ? final
+                               : sample(candidate.texture.Get(), static_cast<DXGI_FORMAT>(result.format), layout);
         result.captured = !input.empty() && !final.empty();
         if (result.captured)
             for (unsigned eye = 0; eye < 2; ++eye) {

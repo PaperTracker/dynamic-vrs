@@ -98,9 +98,16 @@ void captureAlignmentSubmission(int eye, const OpenVrTexture* texture) {
     g_alignmentArmed = false;
     const auto start = GetTickCount64();
     const bool truncated = g_alignmentProbe->truncated();
-    const auto results = g_alignmentProbe->capture(source);
-    logMessage("stage=alignment-probe result=captured targets=%zu truncated=%d elapsedMs=%llu", results.size(),
-               truncated, static_cast<unsigned long long>(GetTickCount64() - start));
+    const auto layout = g_vrsState.layout;
+    if (layout != EyeLayout::SideBySide && layout != EyeLayout::Array) {
+        g_alignmentProbe->reset();
+        logMessage("stage=alignment-probe result=skipped reason=unsupported-layout");
+        return;
+    }
+    const auto results = g_alignmentProbe->capture(source, layout);
+    logMessage("stage=alignment-probe result=captured layout=%s targets=%zu truncated=%d elapsedMs=%llu",
+               layout == EyeLayout::Array ? "array" : "side-by-side", results.size(), truncated,
+               static_cast<unsigned long long>(GetTickCount64() - start));
     for (const auto& r : results) {
         logMessage("stage=alignment-target texture=%p size=%ux%u samples=%u format=%u sameAsSubmit=%d captured=%d "
                    "viewportCount=%u vp0=%.1f,%.1f,%.1f,%.1f vp1=%.1f,%.1f,%.1f,%.1f",

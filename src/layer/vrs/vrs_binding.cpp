@@ -30,21 +30,32 @@ DXGI_FORMAT formatFamily(DXGI_FORMAT format) {
     return format;
 }
 
-bool rasterFlipYForTarget(DXGI_FORMAT viewFormat, UINT samples = 1) {
+bool rasterFlipYForTarget(DXGI_FORMAT viewFormat, UINT samples) {
     if (g_settings.rasterFlipY || g_vrsState.submittedFlipY) return true;
     if (g_settings.rasterFlipYFormat == DXGI_FORMAT_UNKNOWN || viewFormat != g_settings.rasterFlipYFormat ||
         g_vrsState.submittedFormat == DXGI_FORMAT_UNKNOWN)
         return false;
-    if (g_settings.rasterFlipYSamples != 0 && samples != g_settings.rasterFlipYSamples) return false;
-    // A format-only rule cannot distinguish intermediates from the final surface
-    // when they belong to the same family. Do not flip the final image by guessing.
-    if (formatFamily(viewFormat) == formatFamily(g_vrsState.submittedFormat)) {
+    const UINT ruleSamples = g_settings.rasterFlipYSamples;
+    if (ruleSamples != 0 && samples != ruleSamples) return false;
+    // A shared OpenXR swapchain gives us one submitted sample count for both eyes.
+    const bool sharedOpenXrSubmission =
+        g_openXrActive && (g_vrsState.layout == EyeLayout::Array || g_vrsState.layout == EyeLayout::SideBySide);
+    if (formatFamily(viewFormat) == formatFamily(g_vrsState.submittedFormat) &&
+        (!sharedOpenXrSubmission || ruleSamples == 0 || g_vrsState.submittedSamples == 0 ||
+         ruleSamples == g_vrsState.submittedSamples)) {
         static std::once_flag warning;
         std::call_once(warning, [] {
             logMessage("stage=vrs-raster-transform result=ambiguous-final-format action=ignore-format-rule");
         });
         return false;
     }
+    static std::once_flag applied;
+    std::call_once(applied, [=] {
+        logMessage("stage=vrs-raster-transform result=target-rule format=%u samples=%u submittedFormat=%u "
+                   "submittedSamples=%u flipY=1",
+                   static_cast<unsigned int>(viewFormat), samples,
+                   static_cast<unsigned int>(g_vrsState.submittedFormat), g_vrsState.submittedSamples);
+    });
     return true;
 }
 
@@ -350,6 +361,7 @@ void prepareFrameTexture(ID3D11Texture2D* d3dTexture, EyeLayout layout, bool com
         return;
     }
     g_vrsState.submittedFormat = textureDesc.Format;
+    g_vrsState.submittedSamples = textureDesc.SampleDesc.Count;
     if (layout == EyeLayout::Unknown) {
         const OpenVrTexture texture{d3dTexture, 0, 0};
         updateEyeLayoutLocked(context, eye, &texture, bounds, textureDesc.ArraySize);
@@ -411,6 +423,7 @@ void releaseD3d11Vrs(ID3D11DeviceContext* context) {
     g_vrsState.layout = EyeLayout::Unknown;
     g_vrsState.leftEyeHandle = nullptr;
     g_vrsState.submittedFormat = DXGI_FORMAT_UNKNOWN;
+    g_vrsState.submittedSamples = 0;
     g_vrsState.submittedFlipY = false;
     g_vrsState.gaze.lastSequence = 0;
     g_vrsState.gaze.openLogged = g_vrsState.gaze.connectedLogged = false;

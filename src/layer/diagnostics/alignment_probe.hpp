@@ -4,7 +4,8 @@
 #include <memory>
 #include <vector>
 
-struct ID3D11Texture2D;
+#include "layer/vrs/eye_viewport.hpp"
+
 namespace dvr::layer::diagnostics {
 struct AlignmentScore {
     float identity = -2, flipped = -2, best = -2, scaleY = 1;
@@ -27,7 +28,7 @@ public:
     void reset();
     bool truncated() const;
     void observe(ID3D11Texture2D*, uint32_t viewFormat, uint32_t viewportCount, const std::array<float, 8>&);
-    std::vector<TargetAlignmentResult> capture(ID3D11Texture2D* submitted);
+    std::vector<TargetAlignmentResult> capture(ID3D11Texture2D* submitted, EyeLayout layout);
 
 private:
     struct Impl;

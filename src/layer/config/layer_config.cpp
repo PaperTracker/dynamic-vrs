@@ -131,8 +131,11 @@ void loadLayerSettings() {
         static_cast<std::uint16_t>(gazePort == 0 || gazePort >= 1024 ? gazePort : dvr::gaze::DefaultPort);
     s.rasterFlipY = ini.flag(L"vrsRasterFlipY");
     s.rasterFlipYFormat = static_cast<DXGI_FORMAT>(static_cast<int>(ini.number(L"vrsRasterFlipYFormat", 0, 0, 191)));
-    const auto flipSamples = static_cast<UINT>(ini.number(L"vrsRasterFlipYSamples", 1, 0, 4));
-    s.rasterFlipYSamples = flipSamples == 0 || flipSamples == 2 || flipSamples == 4 ? flipSamples : 1;
+    // Leave invalid values outside the supported counts so they fall back to one sample.
+    const double flipSamples = ini.number(L"vrsRasterFlipYSamples", 1, -1, 9);
+    s.rasterFlipYSamples = flipSamples == 0 || flipSamples == 2 || flipSamples == 4 || flipSamples == 8
+                               ? static_cast<UINT>(flipSamples)
+                               : 1;
     logMessage("stage=vrs-raster-transform flipY=%d flipFormat=%u flipSamples=%u", s.rasterFlipY ? 1 : 0,
                static_cast<unsigned int>(s.rasterFlipYFormat), s.rasterFlipYSamples);
 
